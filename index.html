@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leey Project | Casino Hub</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;600;800&display=swap" rel="stylesheet">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#030712">
+
+    <script>
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.register('service-worker.js');
+        }
+    </script>
+    <style>
+        :root {
+            --bg: #030712;
+            --glass: rgba(17, 24, 39, 0.7);
+            --neon-blue: #00d2ff;
+            --neon-purple: #9d50bb;
+            --neon-pink: #f000ff;
+            --gold: #f59e0b;
+            --success: #10b981;
+            --danger: #ef4444;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Outfit', sans-serif; }
+
+        body {
+            background: var(--bg);
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(157, 80, 187, 0.1) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(0, 210, 255, 0.1) 0%, transparent 40%);
+            color: white;
+            min-height: 100vh;
+            display: flex; flex-direction: column; align-items: center;
+        }
+
+        /* --- Header & Balance --- */
+        header {
+            width: 100%; max-width: 1200px; padding: 25px;
+            display: flex; justify-content: space-between; align-items: center;
+            z-index: 100;
+        }
+        .logo { font-size: 1.8rem; font-weight: 800; letter-spacing: 2px; background: linear-gradient(to right, var(--neon-blue), var(--neon-purple)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .balance-card {
+            background: var(--glass); padding: 12px 25px; border-radius: 16px;
+            border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(12px);
+            display: flex; align-items: center; gap: 10px;
+        }
+        .balance-amount { font-weight: 800; color: var(--gold); font-size: 1.3rem; }
+
+        /* --- Menu & Views --- */
+        #main-menu { position: fixed; inset: 0; background: rgba(3, 7, 18, 0.95); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 1000; transition: 0.5s; }
+        .menu-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; width: 90%; max-width: 800px; margin-top: 30px; }
+        .game-card {
+            background: var(--glass); padding: 30px; border-radius: 24px; text-align: center;
+            border: 1px solid rgba(255,255,255,0.1); cursor: pointer; transition: 0.3s;
+        }
+        .game-card:hover { transform: translateY(-10px); border-color: var(--neon-blue); box-shadow: 0 10px 30px rgba(0,210,255,0.2); }
+        .game-card i { font-size: 3rem; display: block; margin-bottom: 15px; }
+
+        .view { display: none; width: 100%; max-width: 600px; padding: 20px; flex-direction: column; align-items: center; animation: fadeIn 0.4s ease; }
+        .active { display: flex; }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+
+        /* --- Global Controls --- */
+        .controls { background: var(--glass); padding: 20px; border-radius: 20px; width: 100%; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.1); }
+        .bet-group { display: flex; justify-content: center; align-items: center; gap: 15px; }
+        .bet-input { background: #000; border: 1px solid #333; color: white; padding: 10px; border-radius: 10px; width: 100px; text-align: center; font-size: 1.1rem; }
+        .btn {
+            padding: 12px 25px; border: none; border-radius: 12px; font-weight: 700; cursor: pointer;
+            transition: 0.2s; text-transform: uppercase;
+        }
+        .btn-main { background: linear-gradient(45deg, var(--neon-blue), var(--neon-purple)); color: white; width: 100%; margin-top: 15px; }
+        .btn-main:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-back { background: transparent; color: #666; margin-top: 20px; text-decoration: underline; }
+
+        /* --- Slots Game --- */
+        .reels { display: flex; gap: 15px; margin: 30px 0; }
+        .reel {
+            width: 100px; height: 120px; background: #111; border-radius: 16px;
+            display: flex; align-items: center; justify-content: center; font-size: 3.5rem;
+            border: 2px solid #222; box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
+        }
+        .spinning { animation: blurAnim 0.1s infinite; }
+        @keyframes blurAnim { 0% { filter: blur(0); } 50% { filter: blur(5px); } 100% { filter: blur(0); } }
+
+        /* --- Color Game --- */
+        .color-bet-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; width: 100%; margin-bottom: 15px; }
+        .color-option {
+            height: 60px; border-radius: 12px; border: 3px solid transparent; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; font-weight: 800; opacity: 0.6;
+        }
+        .color-option.selected { opacity: 1; border-color: white; transform: scale(1.05); }
+        .dice-container { display: flex; gap: 20px; margin: 20px 0; }
+        .die { width: 80px; height: 80px; border-radius: 15px; display: flex; align-items: center; justify-content: center; font-size: 1rem; border: 2px solid rgba(255,255,255,0.2); }
+
+        /* --- Mines Game --- */
+        .mines-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 20px; }
+        .tile {
+            width: 60px; height: 60px; background: #1f2937; border-radius: 10px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; font-size: 1.5rem; transition: 0.2s;
+        }
+        .tile:hover { background: #374151; }
+        .tile.safe { background: var(--success); box-shadow: 0 0 15px var(--success); }
+        .tile.bomb { background: var(--danger); box-shadow: 0 0 15px var(--danger); }
+
+        #status { height: 30px; margin: 15px 0; font-weight: 600; text-align: center; }
+        .win-text { color: var(--success); }
+        .loss-text { color: var(--danger); }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo">Leey Project </div>
+        <div class="balance-card">
+            <span>WALLET</span>
+            <span class="balance-amount">$<span id="bal">5000.00</span></span>
+        </div>
+    </header>
+
+    <div id="main-menu">
+        <h1 style="font-size: 3rem; font-weight: 800;">CHOOSE DESTINY</h1>
+        <div class="menu-grid">
+            <div class="game-card" onclick="openGame('slots')"><i>🎰</i><h3>SLOTS</h3><p>Triple the thrill</p></div>
+            <div class="game-card" onclick="openGame('mines')"><i>💣</i><h3>MINES</h3><p>Test your nerves</p></div>
+            <div class="game-card" onclick="openGame('color')"><i>🎨</i><h3>COLOR GAME</h3><p>Classic Perya style</p></div>
+        </div>
+    </div>
+
+    <div id="slots-game" class="view">
+        <div class="controls">
+            <div class="bet-group">
+                <label>BET AMOUNT:</label>
+                <input type="number" id="slots-bet" class="bet-input" value="10" min="1">
+            </div>
+        </div>
+        <div class="reels">
+            <div class="reel" id="r1">💎</div>
+            <div class="reel" id="r2">💎</div>
+            <div class="reel" id="r3">💎</div>
+        </div>
+        <div id="slots-status"></div>
+        <button class="btn btn-main" onclick="playSlots()" id="spin-btn">PULL LEVER</button>
+        <button class="btn btn-back" onclick="goBack()">Back to Lobby</button>
+    </div>
+
+    <div id="color-game" class="view">
+        <div class="controls">
+            <p style="text-align:center; margin-bottom:10px; font-size:0.9rem; color:#888;">Pick a color & Bet. Payout: 1x, 2x, or 3x matches!</p>
+            <div class="color-bet-grid">
+                <div class="color-option" style="background: #ef4444;" onclick="selectColor(this, 'Red')">RED</div>
+                <div class="color-option" style="background: #3b82f6;" onclick="selectColor(this, 'Blue')">BLUE</div>
+                <div class="color-option" style="background: #eab308;" onclick="selectColor(this, 'Yellow')">YELLOW</div>
+                <div class="color-option" style="background: #22c55e;" onclick="selectColor(this, 'Green')">GREEN</div>
+                <div class="color-option" style="background: #a855f7;" onclick="selectColor(this, 'Purple')">PURPLE</div>
+                <div class="color-option" style="background: #f472b6;" onclick="selectColor(this, 'Pink')">PINK</div>
+            </div>
+            <div class="bet-group">
+                <input type="number" id="color-bet" class="bet-input" value="10">
+            </div>
+        </div>
+        <div class="dice-container">
+            <div class="die" id="d1" style="background:#222">?</div>
+            <div class="die" id="d2" style="background:#222">?</div>
+            <div class="die" id="d3" style="background:#222">?</div>
+        </div>
+        <div id="color-status"></div>
+        <button class="btn btn-main" onclick="playColorGame()" id="roll-btn">ROLL DICE</button>
+        <button class="btn btn-back" onclick="goBack()">Back to Lobby</button>
+    </div>
+
+    <div id="mines-game" class="view">
+        <div class="controls">
+            <div class="bet-group" style="flex-wrap: wrap;">
+                <div>Bet: <input type="number" id="mines-bet" class="bet-input" value="10"></div>
+                <div>Mines: <input type="number" id="mines-count" class="bet-input" value="3" min="1" max="20"></div>
+            </div>
+            <button class="btn btn-main" id="m-start" onclick="startMines()">START ROUND</button>
+            <button class="btn btn-main" id="m-cashout" style="display:none; background:var(--success);" onclick="cashoutMines()">CASHOUT ($0)</button>
+        </div>
+        <div id="mines-status"></div>
+        <div class="mines-grid" id="m-grid"></div>
+        <button class="btn btn-back" id="m-back" onclick="goBack()">Back to Lobby</button>
+    </div>
+
+    <script>
+        let balance = 5000.00;
+        const syms = ['🍒', '🍋', '⭐', '💎', '7️⃣', '🍀'];
+        const colors = ['Red', 'Blue', 'Yellow', 'Green', 'Purple', 'Pink'];
+        const colorHex = { 'Red': '#ef4444', 'Blue': '#3b82f6', 'Yellow': '#eab308', 'Green': '#22c55e', 'Purple': '#a855f7', 'Pink': '#f472b6' };
+        
+        let selectedColor = null;
+        let mineState = { active: false, bombs: [], revealed: 0, bet: 0, mult: 1.0 };
+
+        function updateBal(amt) {
+            balance += amt;
+            document.getElementById('bal').innerText = balance.toFixed(2);
+        }
+
+        function openGame(game) {
+            document.getElementById('main-menu').style.opacity = '0';
+            setTimeout(() => {
+                document.getElementById('main-menu').style.display = 'none';
+                document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+                document.getElementById(game + '-game').classList.add('active');
+            }, 300);
+        }
+
+        function goBack() {
+            document.getElementById('main-menu').style.display = 'flex';
+            setTimeout(() => document.getElementById('main-menu').style.opacity = '1', 10);
+        }
+
+        // --- SLOTS LOGIC ---
+        async function playSlots() {
+            const bet = parseFloat(document.getElementById('slots-bet').value);
+            if(balance < bet) return alert("Low balance!");
+            
+            updateBal(-bet);
+            const btn = document.getElementById('spin-btn');
+            btn.disabled = true;
+            
+            const reels = [document.getElementById('r1'), document.getElementById('r2'), document.getElementById('r3')];
+            reels.forEach(r => r.classList.add('spinning'));
+
+            await new Promise(r => setTimeout(r, 1200));
+
+            const res = reels.map(r => {
+                r.classList.remove('spinning');
+                const s = syms[Math.floor(Math.random()*syms.length)];
+                r.innerText = s;
+                return s;
+            });
+
+            const unique = [...new Set(res)].length;
+            const status = document.getElementById('slots-status');
+            
+            if(unique === 1) {
+                const win = bet * 10;
+                updateBal(win);
+                status.innerHTML = `<span class="win-text">JACKPOT! +$${win}</span>`;
+            } else if(unique === 2) {
+                const win = bet * 3;
+                updateBal(win);
+                status.innerHTML = `<span class="win-text">WIN! +$${win}</span>`;
+            } else {
+                status.innerHTML = `<span class="loss-text">Try again!</span>`;
+            }
+            btn.disabled = false;
+        }
+
+        // --- COLOR GAME LOGIC ---
+        function selectColor(el, color) {
+            document.querySelectorAll('.color-option').forEach(opt => opt.classList.remove('selected'));
+            el.classList.add('selected');
+            selectedColor = color;
+        }
+
+        async function playColorGame() {
+            const bet = parseFloat(document.getElementById('color-bet').value);
+            if(!selectedColor) return alert("Select a color first!");
+            if(balance < bet) return alert("Low balance!");
+
+            updateBal(-bet);
+            const btn = document.getElementById('roll-btn');
+            btn.disabled = true;
+
+            const dice = [document.getElementById('d1'), document.getElementById('d2'), document.getElementById('d3')];
+            
+            // Rolling animation
+            let interval = setInterval(() => {
+                dice.forEach(d => {
+                    const c = colors[Math.floor(Math.random()*colors.length)];
+                    d.style.background = colorHex[c];
+                });
+            }, 100);
+
+            await new Promise(r => setTimeout(r, 1500));
+            clearInterval(interval);
+
+            let matches = 0;
+            dice.forEach(d => {
+                const finalColor = colors[Math.floor(Math.random()*colors.length)];
+                d.style.background = colorHex[finalColor];
+                d.innerText = '';
+                if(finalColor === selectedColor) matches++;
+            });
+
+            const status = document.getElementById('color-status');
+            if(matches > 0) {
+                const win = bet * (matches + 1); // 1 match = 2x, 2 match = 3x...
+                updateBal(win);
+                status.innerHTML = `<span class="win-text">Matched ${matches}! Won $${win}</span>`;
+            } else {
+                status.innerHTML = `<span class="loss-text">No matches.</span>`;
+            }
+            btn.disabled = false;
+        }
+
+        // --- MINES LOGIC ---
+        function startMines() {
+            const bet = parseFloat(document.getElementById('mines-bet').value);
+            const count = parseInt(document.getElementById('mines-count').value);
+            if(balance < bet) return alert("Low balance!");
+
+            updateBal(-bet);
+            mineState = { active: true, bombs: [], revealed: 0, bet: bet, mult: 1.0 };
+            
+            while(mineState.bombs.length < count) {
+                let r = Math.floor(Math.random()*25);
+                if(!mineState.bombs.includes(r)) mineState.bombs.push(r);
+            }
+
+            document.getElementById('m-start').style.display = 'none';
+            document.getElementById('m-cashout').style.display = 'block';
+            document.getElementById('m-back').style.display = 'none';
+            
+            const grid = document.getElementById('m-grid');
+            grid.innerHTML = '';
+            for(let i=0; i<25; i++) {
+                const t = document.createElement('div');
+                t.className = 'tile';
+                t.onclick = () => revealTile(i, t);
+                grid.appendChild(t);
+            }
+            updateMinesUI();
+        }
+
+        function revealTile(idx, el) {
+            if(!mineState.active || el.classList.contains('safe')) return;
+
+            if(mineState.bombs.includes(idx)) {
+                el.classList.add('bomb');
+                el.innerText = '💣';
+                endMines(false);
+            } else {
+                el.classList.add('safe');
+                el.innerText = '💎';
+                mineState.revealed++;
+                // Multiplier formula
+                mineState.mult *= (25 - mineState.revealed + 1) / (25 - mineState.revealed + 1 - mineState.bombs.length);
+                updateMinesUI();
+            }
+        }
+
+        function updateMinesUI() {
+            const pot = mineState.bet * mineState.mult;
+            document.getElementById('m-cashout').innerText = `CASHOUT ($${pot.toFixed(2)})`;
+        }
+
+        function cashoutMines() {
+            const win = mineState.bet * mineState.mult;
+            updateBal(win);
+            document.getElementById('mines-status').innerHTML = `<span class="win-text">Cashed out $${win.toFixed(2)}!</span>`;
+            endMines(true);
+        }
+
+        function endMines(win) {
+            mineState.active = false;
+            document.getElementById('m-start').style.display = 'block';
+            document.getElementById('m-cashout').style.display = 'none';
+            document.getElementById('m-back').style.display = 'block';
+            
+            // Show all bombs
+            const tiles = document.querySelectorAll('.tile');
+            mineState.bombs.forEach(b => {
+                tiles[b].classList.add('bomb');
+                tiles[b].innerText = '💣';
+            });
+            if(!win) document.getElementById('mines-status').innerHTML = `<span class="loss-text">BOOM! You lost.</span>`;
+        }
+    </script>
+</body>
+</html>
